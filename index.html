@@ -126,8 +126,7 @@
       <div class="sum" id="sum"></div>
 
       <div class="tabs" role="tablist">
-        <button role="tab" id="t-fixes" aria-selected="true" title="Revenus et frais fixes">Revenus &amp; frais</button>
-        <button role="tab" id="t-extra" aria-selected="false" title="Rentrées exceptionnelles">Exceptionnel</button>
+        <button role="tab" id="t-fixes" aria-selected="true" title="Revenus, rentrées exceptionnelles et frais fixes">Revenus &amp; frais</button>
         <button role="tab" id="t-plans" aria-selected="false" title="Provisions du mois">Provisions</button>
         <button role="tab" id="t-reals" aria-selected="false" title="Dépenses réelles et rapprochement">Réel</button>
         <button role="tab" id="t-year" aria-selected="false" title="Bilan de l'année">Bilan</button>
@@ -181,7 +180,11 @@
       </div>
     </div>
   </div>
+  <!-- Rapport imprimable (export PDF) -->
+  <div id="print-report" aria-hidden="true">
+    </div>
 
+  
   <div id="toast" class="toast" hidden></div>
   <script type="module" src="./app.js"></script>
 </body>
