@@ -12,6 +12,12 @@ self.addEventListener('activate', e => {
     .then(() => self.clients.claim()));
 });
 
+self.addEventListener('message', e => {
+  if (!e.data) return;
+  if (e.data.type === 'GET_VERSION' && e.ports && e.ports[0]) e.ports[0].postMessage(CACHE);
+  if (e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
