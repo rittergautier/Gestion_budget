@@ -5,10 +5,10 @@
    « mode démo » : tout est stocké localement dans le navigateur. */
 
 export const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCGQTCkLAMx_e2ER-etbpQEK4fTJg974VY",
-  authDomain: "solde-38904.firebaseapp.com",
-  projectId: "solde-38904",
-  storageBucket: "solde-38904.firebasestorage.app",
-  messagingSenderId: "891950279670",
-  appId: "1:891950279670:web:ab3dda733a8c05f9f875d7"
+   apiKey: "AIzaSyA4eL4FhABO3xLbjI58Vu-DNYScnJCwfHU",
+  authDomain: "gestion-budget-65d88.firebaseapp.com",
+  projectId: "gestion-budget-65d88",
+  storageBucket: "gestion-budget-65d88.firebasestorage.app",
+  messagingSenderId: "996959400981",
+  appId: "1:996959400981:web:a1d324c3cd9b91cb418a1c"
 };
