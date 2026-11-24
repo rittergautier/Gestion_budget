@@ -1,0 +1,15 @@
+{
+  "name": "Mon budget mensuel",
+  "short_name": "Budget",
+  "description": "Revenus, frais fixes, dépenses prévues et bilan — personnel, partageable et à votre couleur.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F7EFE6",
+  "theme_color": "#C2603A",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
