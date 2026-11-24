@@ -23,6 +23,7 @@ const mlabel = k => { const p = k.split('-'); return new Date(+p[0], +p[1] - 1, 
 const fromOf = it => it.from || MMIN;
 const toOf = it => it.to || MMAX;
 const applies = (it, k) => fromOf(it) <= k && toOf(it) >= k;
+const MN_FULL = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
 /* ---------- familles de catégories ---------- */
 const CK = { income: null, fixed: 'fix', extra: 'ext', plans: 'plan', reals: 'plan' };
@@ -111,7 +112,6 @@ const extAt = k => sum(extraAt(k), 'amount');
 const listSource = kind => kind === 'income' ? incomeAt(ym) : kind === 'fixed' ? fixedAt(ym) : extraAt(ym);
 const chainOf = (kind, it) => data[kind].filter(x => (x.root || x.id) === (it.root || it.id));
 
-function shift(d) { const p = ym.split('-'); const dt = new Date(+p[0], +p[1] - 1 + d, 1); ym = mkey(dt.getFullYear(), dt.getMonth() + 1); editing = null; render(); }
 function mname() { return mlabel(ym); }
 const planPayload = it => ({ type: 'prov', name: it.name, cat: it.cat, amount: +it.amount || 0, month: it.month || ym, ts: it.ts || Date.now() });
 const realPayload = it => ({ type: 'real', name: it.name, cat: it.cat, amount: +it.amount || 0, planId: it.planId || '', month: it.month || ym, ts: it.ts || Date.now() });
@@ -626,7 +626,6 @@ function renderSum() {
     else { gl = Math.min(gpct, pl / base * 100); gst = gs - gl; }
     arcs += '<circle cx="21" cy="21" r="20" fill="none" stroke="' + (gp.g > 0 ? 'var(--neg)' : 'var(--eco)') + '" stroke-width="1.6" pathLength="100" stroke-dasharray="' + gl + ' ' + (100 - gl) + '" stroke-dashoffset="' + (25 - gst) + '"/>';
   }
-  $('#mlabel').textContent = mname();
   $('#sum').innerHTML =
     '<div class="pie"><div class="donut"><svg viewBox="0 0 42 42" role="img" aria-label="Répartition des revenus : frais fixes, provisions et reste">' + arcs + '</svg>' +
     '<div class="mid"><span>' + (rest < 0 ? 'Déficit' : 'Reste à vivre') + '</span><b class="' + (rest < 0 ? 'neg' : 'pos') + '">' + fc0.format(rest) + '</b>' +
@@ -775,6 +774,7 @@ function renderList(kind) {
   return h + '</section>';
 }
 
+/* Rentrées exceptionnelles : liste + bandeau annuel, désormais dans l'onglet Revenus & frais. */
 function renderExtraTab() {
   const year = +ym.slice(0, 4);
   const months = [];
@@ -787,6 +787,11 @@ function renderExtraTab() {
       '</div></section>';
   }
   return renderList('extra') + strip;
+}
+
+/* Onglet Revenus & frais : revenus + rentrées exceptionnelles (colonne gauche), frais fixes (colonne droite). */
+function renderFixesTab() {
+  return '<div class="fix-col">' + renderList('income') + renderExtraTab() + '</div>' + renderList('fixed');
 }
 
 /* ---------- provisions (anticipation du mois) ---------- */
@@ -961,6 +966,37 @@ function renderYear() {
   return h;
 }
 
+/* ---------- sélecteur de mois (menu déroulant mois + année) ---------- */
+function pickerYears() {
+  const ys = new Set();
+  const cy = now0.getFullYear(), dy = +ym.slice(0, 4);
+  for (let y = cy - 3; y <= cy + 3; y++) ys.add(y);
+  for (let y = dy - 1; y <= dy + 1; y++) ys.add(y);
+  Object.keys(data.plans).forEach(k => ys.add(+k.slice(0, 4)));
+  Object.keys(data.reals).forEach(k => ys.add(+k.slice(0, 4)));
+  data.extra.forEach(it => ys.add(+String(it.month || ym).slice(0, 4)));
+  data.income.concat(data.fixed).forEach(it => { if (it.from) ys.add(+it.from.slice(0, 4)); if (it.to) ys.add(+it.to.slice(0, 4)); });
+  return [...ys].filter(y => y >= 1900 && y <= 2200).sort((a, b) => a - b);
+}
+function renderMonthPicker() {
+  const ms = $('#m-sel'), ys = $('#y-sel');
+  if (!ms || !ys) return;
+  const years = pickerYears();
+  const sig = years.join(',') + '|' + ym;
+  if (ms.dataset.sig !== sig) {
+    ms.dataset.sig = sig;
+    ms.innerHTML = MN_FULL.map((n, i) => '<option value="' + (i + 1) + '">' + n + '</option>').join('');
+    ys.innerHTML = years.map(y => '<option value="' + y + '">' + y + '</option>').join('');
+  }
+  ms.value = String(+ym.slice(5, 7));
+  ys.value = ym.slice(0, 4);
+}
+function pickMonth() {
+  const m = +$('#m-sel').value, y = +$('#y-sel').value;
+  if (!m || !y) return;
+  ym = mkey(y, m); editing = null; render();
+}
+
 /* ---------- préservation de la saisie ---------- */
 function formKey(fm) { return fm.hasAttribute('data-edit') ? 'edit:' + fm.getAttribute('data-id') : 'add:' + fm.getAttribute('data-add'); }
 function findForm(key) {
@@ -995,13 +1031,13 @@ function restoreInputs(st) {
 function render() {
   const st = captureInputs();
   renderSum();
+  renderMonthPicker();
   $('#sum').style.display = tab === 'year' ? 'none' : '';
-  $('#prev').parentNode.style.display = tab === 'year' ? 'none' : '';
-  ['fixes', 'extra', 'plans', 'reals', 'year'].forEach(t => $('#t-' + t).setAttribute('aria-selected', String(tab === t)));
+  $('#month-bar').style.display = tab === 'year' ? 'none' : '';
+  ['fixes', 'plans', 'reals', 'year'].forEach(t => $('#t-' + t).setAttribute('aria-selected', String(tab === t)));
   const v = $('#view');
   v.className = 'tab-' + tab;
-  v.innerHTML = tab === 'fixes' ? renderList('income') + renderList('fixed')
-    : tab === 'extra' ? renderExtraTab()
+  v.innerHTML = tab === 'fixes' ? renderFixesTab()
     : tab === 'plans' ? renderProvisions()
     : tab === 'reals' ? renderReals() : renderYear();
   restoreInputs(st);
@@ -1121,11 +1157,11 @@ function commitRecurringEdit(kind, it, fields) {
 }
 
 /* ---------- événements budget ---------- */
-$('#prev').onclick = () => shift(-1);
-$('#next').onclick = () => shift(1);
-$('#mlabel').addEventListener('click', () => { const n = new Date(); ym = mkey(n.getFullYear(), n.getMonth() + 1); editing = null; render(); });
+$('#m-sel').addEventListener('change', pickMonth);
+$('#y-sel').addEventListener('change', pickMonth);
+$('#m-today').addEventListener('click', () => { const n = new Date(); ym = mkey(n.getFullYear(), n.getMonth() + 1); editing = null; render(); });
+$('#export-pdf').addEventListener('click', exportPDF);
 $('#t-fixes').onclick = () => { tab = 'fixes'; editing = null; render(); };
-$('#t-extra').onclick = () => { tab = 'extra'; editing = null; render(); };
 $('#t-plans').onclick = () => { tab = 'plans'; editing = null; render(); };
 $('#t-reals').onclick = () => { tab = 'reals'; editing = null; render(); };
 $('#t-year').onclick = () => { tab = 'year'; editing = null; yr = +ym.slice(0, 4); render(); };
@@ -1300,6 +1336,92 @@ view.addEventListener('click', e => {
     write(() => store.batchOps('plans', jobs));
   }
 });
+
+/* ---------- export PDF du mois (via impression → « Enregistrer en PDF ») ---------- */
+function buildPrintReport() {
+  const k = ym;
+  const inc = incomeAt(k), ext = extraAt(k), fix = fixedAt(k);
+  const pv = data.plans[k] || [], rs = data.reals[k] || [];
+  const tInc = sum(inc, 'amount'), tExt = sum(ext, 'amount'), tFix = sum(fix, 'amount');
+  const tPv = sum(pv, 'amount'), tRs = sum(rs, 'amount');
+  const rest = tInc + tExt - tFix - tPv;
+  const hasReal = rs.length > 0;
+  const ecart = hasReal ? tRs - tPv : null;
+  const catLabel = (kind, it) => { const c = catFor(kind, it); return esc(c.e) + ' ' + esc(c.label); };
+  const amt = v => '<td class="pr-num">' + f(v) + '</td>';
+  const txt = v => '<td>' + v + '</td>';
+  const ecartCls = ecart == null ? '' : (ecart > 0 ? 'pr-neg' : (ecart < 0 ? 'pr-eco' : 'pr-pos'));
+  const ecartTxt = ecart == null ? '—' : (ecart > 0 ? '+' : '') + f(ecart);
+  const table = (heads, rows, foot) =>
+    '<table class="pr-table"><thead><tr>' + heads + '</tr></thead><tbody>' +
+    (rows.length ? rows.join('') : '<tr><td colspan="9" class="pr-empty">Aucune ligne ce mois-ci.</td></tr>') +
+    '</tbody>' + (foot ? '<tfoot><tr>' + foot + '</tr></tfoot>' : '') + '</table>';
+
+  let h = '<div class="pr-head"><h1>Budget — ' + esc(mlabel(k)) + '</h1>' +
+    '<p class="pr-sub">' + esc(store.viewEmail) + ' · généré le ' + esc(new Date().toLocaleDateString('fr-FR')) + '</p></div>';
+
+  h += '<div class="pr-cards">' +
+    '<div class="pr-card"><span>Revenus</span><b>' + f(tInc + tExt) + '</b>' + (tExt > 0 ? '<small>dont ' + f(tExt) + ' exceptionnel</small>' : '') + '</div>' +
+    '<div class="pr-card"><span>Frais fixes</span><b>' + f(tFix) + '</b></div>' +
+    '<div class="pr-card"><span>Provisions</span><b>' + f(tPv) + '</b></div>' +
+    '<div class="pr-card"><span>Reste prévisionnel</span><b class="' + (rest < 0 ? 'pr-neg' : 'pr-pos') + '">' + f(rest) + '</b></div>' +
+    '<div class="pr-card"><span>Dépenses réelles</span><b>' + (hasReal ? f(tRs) : '—') + '</b></div>' +
+    '<div class="pr-card"><span>Écart réel / provisions</span><b class="' + ecartCls + '">' + ecartTxt + '</b></div>' +
+    '</div>';
+
+  h += '<section class="pr-sec"><h2>Revenus</h2>' +
+    table('<th>Libellé</th><th class="pr-num">Montant</th>',
+      inc.map(it => '<tr>' + txt(esc(it.name)) + amt(it.amount) + '</tr>'),
+      txt('Total revenus') + amt(tInc)) + '</section>';
+
+  h += '<section class="pr-sec"><h2>Rentrées exceptionnelles</h2>' +
+    table('<th>Libellé</th><th>Catégorie</th><th class="pr-num">Montant</th>',
+      ext.map(it => '<tr>' + txt(esc(it.name)) + txt(catLabel('extra', it)) + amt(it.amount) + '</tr>'),
+      txt('Total exceptionnel') + '<td></td>' + amt(tExt)) + '</section>';
+
+  h += '<section class="pr-sec"><h2>Frais fixes</h2>' +
+    table('<th>Libellé</th><th>Catégorie</th><th class="pr-num">Montant</th>',
+      fix.map(it => '<tr>' + txt(esc(it.name)) + txt(catLabel('fixed', it)) + amt(it.amount) + '</tr>'),
+      txt('Total frais fixes') + '<td></td>' + amt(tFix)) + '</section>';
+
+  h += '<section class="pr-sec"><h2>Provisions</h2>' +
+    table('<th>Libellé</th><th>Catégorie</th><th class="pr-num">Montant provisionné</th>',
+      pv.map(it => '<tr>' + txt(esc(it.name)) + txt(catLabel('plans', it)) + amt(it.amount) + '</tr>'),
+      txt('Total provisionné') + '<td></td>' + amt(tPv)) + '</section>';
+
+  const provName = id => { const p = pv.find(x => x.id === id); return p ? esc(p.name) : '🚫 Non prévu'; };
+  h += '<section class="pr-sec"><h2>Dépenses réelles</h2>' +
+    table('<th>Libellé</th><th>Catégorie</th><th>Provision liée</th><th class="pr-num">Montant</th>',
+      rs.map(it => '<tr>' + txt(esc(it.name)) + txt(catLabel('reals', it)) + txt(provName(it.planId)) + amt(it.amount) + '</tr>'),
+      txt('Total dépensé') + '<td></td><td></td>' + amt(tRs)) + '</section>';
+
+  const byPlan = {}; let unplanned = 0;
+  rs.forEach(r => { if (r.planId && pv.some(p => p.id === r.planId)) (byPlan[r.planId] || (byPlan[r.planId] = [])).push(r); else unplanned += +r.amount || 0; });
+  const reconRows = pv.map(p => {
+    const linked = (byPlan[p.id] || []).length;
+    const spent = sum(byPlan[p.id] || [], 'amount');
+    const d = spent - (+p.amount || 0);
+    return '<tr>' + txt(esc(p.name)) + amt(p.amount) + amt(spent) +
+      '<td class="pr-num ' + (linked ? (d > 0 ? 'pr-neg' : (d < 0 ? 'pr-eco' : 'pr-pos')) : '') + '">' + (linked ? (d > 0 ? '+' : '') + f(d) : 'en attente') + '</td></tr>';
+  });
+  reconRows.push('<tr>' + txt('🚫 Non prévu') + amt(0) + amt(unplanned) + '<td class="pr-num ' + (unplanned > 0 ? 'pr-neg' : '') + '">' + (unplanned > 0 ? '+' : '') + f(unplanned) + '</td></tr>');
+  h += '<section class="pr-sec"><h2>Rapprochement provisions / réel</h2>' +
+    table('<th>Provision</th><th class="pr-num">Provisionné</th><th class="pr-num">Dépensé</th><th class="pr-num">Écart</th>',
+      reconRows,
+      txt('Total') + amt(tPv) + amt(tRs) + '<td class="pr-num ' + ecartCls + '">' + ecartTxt + '</td>') + '</section>';
+
+  return h;
+}
+let savedTitle = null;
+function exportPDF() {
+  const rp = $('#print-report');
+  if (!rp) return;
+  rp.innerHTML = buildPrintReport();
+  savedTitle = document.title;
+  document.title = 'Budget - ' + mlabel(ym);
+  window.print();
+}
+window.addEventListener('afterprint', () => { if (savedTitle != null) { document.title = savedTitle; savedTitle = null; } });
 
 /* ---------- comptes ---------- */
 function applyViewMode() {
