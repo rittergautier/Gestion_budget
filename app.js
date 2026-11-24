@@ -1368,68 +1368,113 @@ function buildPrintReport() {
   const rest = tInc + tExt - tFix - tPv - np - ov;
   const hasReal = rs.length > 0;
   const ecart = hasReal ? tRs - tPv : null;
-  const catLabel = (kind, it) => { const c = catFor(kind, it); return esc(c.e) + ' ' + esc(c.label); };
-  const amt = v => '<td class="pr-num">' + f(v) + '</td>';
-  const txt = v => '<td>' + v + '</td>';
-  const ecartCls = ecart == null ? '' : (ecart > 0 ? 'pr-neg' : (ecart < 0 ? 'pr-eco' : 'pr-pos'));
-  const ecartTxt = ecart == null ? '—' : (ecart > 0 ? '+' : '') + f(ecart);
-  const table = (heads, rows, foot) =>
-    '<table class="pr-table"><thead><tr>' + heads + '</tr></thead><tbody>' +
-    (rows.length ? rows.join('') : '<tr><td colspan="9" class="pr-empty">Aucune ligne ce mois-ci.</td></tr>') +
-    '</tbody>' + (foot ? '<tfoot><tr>' + foot + '</tr></tfoot>' : '') + '</table>';
+  const total = tInc + tExt;
+  const catOf = (kind, it) => catFor(kind, it);
+  const clsOf = v => v > 0 ? 'pr-neg' : (v < 0 ? 'pr-eco' : 'pr-pos');
+  const signed = v => (v > 0 ? '+' : '') + f(v);
+  const num = (v, cls) => '<td class="pr-num' + (cls ? ' ' + cls : '') + '">' + v + '</td>';
+  const amt = (v, cls) => num(f(v), cls);
+  const dateStr = new Date().toLocaleDateString('fr-FR');
 
-  let h = '<div class="pr-head"><h1>Budget — ' + esc(mlabel(k)) + '</h1>' +
-    '<p class="pr-sub">' + esc(store.viewEmail) + ' · généré le ' + esc(new Date().toLocaleDateString('fr-FR')) + '</p></div>';
+  /* Rattachement réel / provisions */
+  const byPlan = {}, npList = [];
+  rs.forEach(r => { if (r.planId && pv.some(p => p.id === r.planId)) (byPlan[r.planId] || (byPlan[r.planId] = [])).push(r); else npList.push(r); });
+  const spentOf = p => sum(byPlan[p.id] || [], 'amount');
+  const overs = pv.filter(p => (byPlan[p.id] || []).length && spentOf(p) > (+p.amount || 0))
+    .sort((a, b) => (spentOf(b) - (+b.amount || 0)) - (spentOf(a) - (+a.amount || 0)));
+  const eco = pv.reduce((t, p) => t + ((byPlan[p.id] || []).length ? Math.max(0, (+p.amount || 0) - spentOf(p)) : 0), 0);
 
-  h += '<div class="pr-cards">' +
-    '<div class="pr-card"><span>Revenus</span><b>' + f(tInc + tExt) + '</b>' + (tExt > 0 ? '<small>dont ' + f(tExt) + ' exceptionnel</small>' : '') + '</div>' +
-    '<div class="pr-card"><span>Frais fixes</span><b>' + f(tFix) + '</b></div>' +
-    '<div class="pr-card"><span>Provisions</span><b>' + f(tPv) + '</b></div>' +
-    '<div class="pr-card"><span>Reste à vivre</span><b class="' + (rest < 0 ? 'pr-neg' : 'pr-pos') + '">' + f(rest) + '</b>' + ((np + ov) > 0 ? '<small>après ' + f(np + ov) + ' de non-prévu et dépassements</small>' : '') + '</div>' +    '<div class="pr-card"><span>Dépenses réelles</span><b>' + (hasReal ? f(tRs) : '—') + '</b></div>' +
-    '<div class="pr-card"><span>Écart réel / provisions</span><b class="' + ecartCls + '">' + ecartTxt + '</b></div>' +
-    '</div>';
+  /* ---- En-tête + synthèse ---- */
+  let h = '<div class="pr-head"><div><h1>Budget — ' + esc(mlabel(k)) + '</h1>' +
+    '<p class="pr-sub">' + esc(store.viewEmail) + ' · généré le ' + esc(dateStr) + '</p></div>' +
+    '<div class="pr-brand">💶 Mon budget mensuel</div></div>';
 
-  h += '<section class="pr-sec"><h2>Revenus</h2>' +
-    table('<th>Libellé</th><th class="pr-num">Montant</th>',
-      inc.map(it => '<tr>' + txt(esc(it.name)) + amt(it.amount) + '</tr>'),
-      txt('Total revenus') + amt(tInc)) + '</section>';
+  const heroCap = !hasReal ? 'prévisionnel — aucune dépense réelle saisie'
+    : (np + ov > 0 ? 'après ' + f(np + ov) + ' de non-prévu et dépassements' : 'aucun hors-budget ce mois-ci');
+  h += '<div class="pr-hero"><div class="pr-hero-main ' + (rest < 0 ? 'neg' : 'pos') + '"><span>' + (rest < 0 ? 'Déficit' : 'Reste à vivre') + '</span><b>' + f(rest) + '</b><small>' + heroCap + '</small></div>' +
+    '<div class="pr-kpis">' +
+    '<div class="pr-kpi"><span>Revenus</span><b>' + f(total) + '</b>' + (tExt > 0 ? '<small>dont ' + f(tExt) + ' exceptionnel</small>' : '') + '</div>' +
+    '<div class="pr-kpi"><span>Frais fixes</span><b>' + f(tFix) + '</b></div>' +
+    '<div class="pr-kpi"><span>Provisions</span><b>' + f(tPv) + '</b></div>' +
+    '<div class="pr-kpi"><span>Dépenses réelles</span><b>' + (hasReal ? f(tRs) : '—') + '</b>' + (hasReal ? '<small class="' + clsOf(ecart) + '">' + signed(ecart) + ' vs provisions</small>' : '') + '</div>' +
+    '</div></div>';
 
-  h += '<section class="pr-sec"><h2>Rentrées exceptionnelles</h2>' +
-    table('<th>Libellé</th><th>Catégorie</th><th class="pr-num">Montant</th>',
-      ext.map(it => '<tr>' + txt(esc(it.name)) + txt(catLabel('extra', it)) + amt(it.amount) + '</tr>'),
-      txt('Total exceptionnel') + '<td></td>' + amt(tExt)) + '</section>';
+  const base = Math.max(total, tFix + tPv + np + ov, 1);
+  const segs = [[tFix, '#7d8aa0', 'Frais fixes'], [tPv, '#3f6fb5', 'Provisions'], [np + ov, '#b3261e', 'Non-prévu & dépassements'], [Math.max(rest, 0), '#2e7d32', 'Reste à vivre']];
+  h += '<div class="pr-alloc"><div class="pr-bar">' +
+    segs.map(s => s[0] > 0 ? '<i style="width:' + (s[0] / base * 100) + '%;background:' + s[1] + '"></i>' : '').join('') +
+    '</div><div class="pr-legend">' +
+    segs.filter(s => s[0] > 0).map(s => '<span><i style="background:' + s[1] + '"></i>' + esc(s[2]) + ' · <b>' + f(s[0]) + '</b> (' + Math.round(s[0] / base * 100) + ' %)</span>').join('') +
+    (rest < 0 ? '<span>⚠️ Déficit · <b>' + f(rest) + '</b></span>' : '') +
+    '</div></div>';
 
-  h += '<section class="pr-sec"><h2>Frais fixes</h2>' +
-    table('<th>Libellé</th><th>Catégorie</th><th class="pr-num">Montant</th>',
-      fix.map(it => '<tr>' + txt(esc(it.name)) + txt(catLabel('fixed', it)) + amt(it.amount) + '</tr>'),
-      txt('Total frais fixes') + '<td></td>' + amt(tFix)) + '</section>';
+  let watch;
+  if (!hasReal) watch = '<div class="pr-watch info"><b>ℹ️ Document prévisionnel</b><p>Aucune dépense réelle n’a été saisie pour ce mois : les montants ci-dessus sont des prévisions.</p></div>';
+  else if (overs.length || npList.length) {
+    watch = '<div class="pr-watch warn"><b>⚠️ À surveiller — ' + f(np + ov) + ' hors budget</b><ul>' +
+      overs.map(p => '<li>' + esc(p.name) + ' : <b class="pr-neg">' + signed(spentOf(p) - (+p.amount || 0)) + '</b> (provision ' + f(p.amount) + ', dépensé ' + f(spentOf(p)) + ')</li>').join('') +
+      (npList.length ? '<li>' + npList.length + ' dépense' + (npList.length > 1 ? 's' : '') + ' non prévue' + (npList.length > 1 ? 's' : '') + ' : <b class="pr-neg">-' + f(np) + '</b> sur le reste à vivre</li>' : '') +
+      '</ul></div>';
+  } else watch = '<div class="pr-watch ok"><b>✅ Aucun dépassement ce mois-ci</b><p>' + (eco > 0 ? f(eco) + ' d’économies constatées — elles restent dans leurs provisions.' : 'Toutes les dépenses sont dans leurs provisions.') + '</p></div>';
+  h += watch;
 
-  h += '<section class="pr-sec"><h2>Provisions</h2>' +
-    table('<th>Libellé</th><th>Catégorie</th><th class="pr-num">Montant provisionné</th>',
-      pv.map(it => '<tr>' + txt(esc(it.name)) + txt(catLabel('plans', it)) + amt(it.amount) + '</tr>'),
-      txt('Total provisionné') + '<td></td>' + amt(tPv)) + '</section>';
+  /* ---- Page 2 : détail ---- */
+  h += '<div class="pr-page">';
+  h += '<section class="pr-sec"><h2>1 · Provisions et dépenses réelles</h2>' +
+    '<p class="pr-note">Chaque provision est suivie des dépenses réelles qui lui sont rattachées. « En attente » = provision intacte. Le non-prévu et les dépassements réduisent le reste à vivre.</p>';
+  if (!pv.length && !rs.length) h += '<p class="pr-empty">Aucune provision ni dépense réelle ce mois-ci.</p>';
+  else {
+    let rows = '';
+    [...pv].sort((a, b) => (+b.amount || 0) - (+a.amount || 0)).forEach(p => {
+      const linked = (byPlan[p.id] || []).slice().sort((a, b) => (+b.amount || 0) - (+a.amount || 0));
+      const spent = sum(linked, 'amount'), d = spent - (+p.amount || 0), c = catOf('plans', p);
+      rows += '<tr class="pr-group"><td>' + esc(c.e) + ' ' + esc(p.name) + '<small>' + esc(c.label) + '</small></td>' +
+        amt(p.amount) + (linked.length ? amt(spent) : num('—')) +
+        (linked.length ? num(signed(d), clsOf(d)) : num('en attente', 'pr-muted')) + '</tr>';
+      linked.forEach(r => {
+        rows += '<tr class="pr-sub"><td class="pr-subname">↳ ' + esc(r.name) + '<small>' + esc(catOf('reals', r).label) + '</small></td>' +
+          num('') + amt(r.amount) + num('') + '</tr>';
+      });
+    });
+    if (npList.length) {
+      rows += '<tr class="pr-group"><td>🚫 Non prévu<small>' + npList.length + ' dépense' + (npList.length > 1 ? 's' : '') + ' sans provision</small></td>' +
+        num('—') + amt(np) + num('+' + f(np), 'pr-neg') + '</tr>';
+      npList.slice().sort((a, b) => (+b.amount || 0) - (+a.amount || 0)).forEach(r => {
+        rows += '<tr class="pr-sub"><td class="pr-subname">↳ ' + esc(r.name) + '<small>' + esc(catOf('reals', r).label) + '</small></td>' +
+          num('') + amt(r.amount) + num('') + '</tr>';
+      });
+    }
+    h += '<table class="pr-table"><thead><tr><th>Provision / dépense</th><th class="pr-num">Provisionné</th><th class="pr-num">Dépensé</th><th class="pr-num">Écart</th></tr></thead><tbody>' + rows + '</tbody>' +
+      '<tfoot><tr><td>Totaux</td>' + amt(tPv) + (hasReal ? amt(tRs) : num('—')) + (hasReal ? num(signed(ecart), clsOf(ecart)) : num('—')) + '</tr></tfoot></table>';
+  }
+  h += '</section>';
 
-  const provName = id => { const p = pv.find(x => x.id === id); return p ? esc(p.name) : '🚫 Non prévu'; };
-  h += '<section class="pr-sec"><h2>Dépenses réelles</h2>' +
-    table('<th>Libellé</th><th>Catégorie</th><th>Provision liée</th><th class="pr-num">Montant</th>',
-      rs.map(it => '<tr>' + txt(esc(it.name)) + txt(catLabel('reals', it)) + txt(provName(it.planId)) + amt(it.amount) + '</tr>'),
-      txt('Total dépensé') + '<td></td><td></td>' + amt(tRs)) + '</section>';
+  h += '<section class="pr-sec"><h2>2 · Frais fixes</h2>';
+  if (!fix.length) h += '<p class="pr-empty">Aucun frais fixe ce mois-ci.</p>';
+  else {
+    const groups = {};
+    fix.forEach(it => { const c = catOf('fixed', it).id; (groups[c] || (groups[c] = [])).push(it); });
+    let rows = '';
+    Object.keys(groups).sort((a, b) => sum(groups[b], 'amount') - sum(groups[a], 'amount')).forEach(cid => {
+      const g = groups[cid], c = catFor('fixed', { cat: cid, name: '' });
+      rows += '<tr class="pr-group"><td>' + esc(c.e) + ' ' + esc(c.label) + '<small>' + g.length + ' ligne' + (g.length > 1 ? 's' : '') + '</small></td>' + amt(sum(g, 'amount')) + '</tr>';
+      g.slice().sort((a, b) => (+b.amount || 0) - (+a.amount || 0)).forEach(it => {
+        rows += '<tr class="pr-sub"><td class="pr-subname">' + esc(it.name) + '</td>' + amt(it.amount) + '</tr>';
+      });
+    });
+    h += '<table class="pr-table"><thead><tr><th>Catégorie / libellé</th><th class="pr-num">Montant</th></tr></thead><tbody>' + rows + '</tbody>' +
+      '<tfoot><tr><td>Total frais fixes</td>' + amt(tFix) + '</tr></tfoot></table>';
+  }
+  h += '</section>';
 
-  const byPlan = {}; let unplanned = 0;
-  rs.forEach(r => { if (r.planId && pv.some(p => p.id === r.planId)) (byPlan[r.planId] || (byPlan[r.planId] = [])).push(r); else unplanned += +r.amount || 0; });
-  const reconRows = pv.map(p => {
-    const linked = (byPlan[p.id] || []).length;
-    const spent = sum(byPlan[p.id] || [], 'amount');
-    const d = spent - (+p.amount || 0);
-    return '<tr>' + txt(esc(p.name)) + amt(p.amount) + amt(spent) +
-      '<td class="pr-num ' + (linked ? (d > 0 ? 'pr-neg' : (d < 0 ? 'pr-eco' : 'pr-pos')) : '') + '">' + (linked ? (d > 0 ? '+' : '') + f(d) : 'en attente') + '</td></tr>';
-  });
-  reconRows.push('<tr>' + txt('🚫 Non prévu') + amt(0) + amt(unplanned) + '<td class="pr-num ' + (unplanned > 0 ? 'pr-neg' : '') + '">' + (unplanned > 0 ? '+' : '') + f(unplanned) + '</td></tr>');
-  h += '<section class="pr-sec"><h2>Rapprochement provisions / réel</h2>' +
-    table('<th>Provision</th><th class="pr-num">Provisionné</th><th class="pr-num">Dépensé</th><th class="pr-num">Écart</th>',
-      reconRows,
-      txt('Total') + amt(tPv) + amt(tRs) + '<td class="pr-num ' + ecartCls + '">' + ecartTxt + '</td>') + '</section>';
+  const mini = (items, total2, label) => '<table class="pr-table"><thead><tr><th>Libellé</th><th class="pr-num">Montant</th></tr></thead><tbody>' +
+    (items.length ? items.slice().sort((a, b) => (+b.amount || 0) - (+a.amount || 0)).map(it => '<tr><td>' + esc(it.name) + '</td>' + amt(it.amount) + '</tr>').join('') : '<tr><td colspan="2" class="pr-empty">Aucune ligne.</td></tr>') +
+    '</tbody><tfoot><tr><td>' + label + '</td>' + amt(total2) + '</tr></tfoot></table>';
+  h += '<div class="pr-duo"><section class="pr-sec pr-block"><h2>3 · Revenus</h2>' + mini(inc, tInc, 'Total revenus') + '</section>' +
+    (ext.length ? '<section class="pr-sec pr-block"><h2>4 · Rentrées exceptionnelles</h2>' + mini(ext, tExt, 'Total exceptionnel') + '</section>' : '') +
+    '</div></div>';
 
+  h += '<p class="pr-foot">Mon budget mensuel · ' + esc(store.viewEmail) + ' · ' + esc(mlabel(k)) + ' — généré le ' + esc(dateStr) + '. Reste à vivre = revenus − frais fixes − provisions − non-prévu − dépassements. Les économies restent dans leurs provisions.</p>';
   return h;
 }
 let savedTitle = null;
