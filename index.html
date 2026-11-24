@@ -116,10 +116,11 @@
 
     <main>
       <h1>Mon budget mensuel</h1>
-      <div class="month">
-        <button class="ghost" id="prev" aria-label="Mois précédent">‹</button>
-        <button class="ghost month-label" id="mlabel" title="Revenir au mois en cours">…</button>
-        <button class="ghost" id="next" aria-label="Mois suivant">›</button>
+            <div class="month month-picker" id="month-bar">
+        <select id="m-sel" aria-label="Mois"></select>
+        <select id="y-sel" aria-label="Année"></select>
+        <button class="ghost" id="m-today" type="button" title="Revenir au mois en cours" aria-label="Revenir au mois en cours">📍</button>
+        <button class="ghost" id="export-pdf" type="button" title="Exporter le mois en PDF">⤓ PDF</button>
       </div>
 
       <div class="sum" id="sum"></div>
