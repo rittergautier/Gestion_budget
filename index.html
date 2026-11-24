@@ -1,119 +1,186 @@
-<!DOCTYPE html>
-<html lang="fr">
+<!doctype html>
+<html lang="fr" data-theme="chaleureux" data-mode="light" data-density="normal" data-contrast="normal">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion Budget Pro</title>
-    <!-- Lien vers le manifest pour l'installation -->
-    <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="style.css">
-    <!-- Icônes pour l'interface -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mon budget mensuel</title>
+  <meta name="description" content="Revenus, frais fixes, rentrées exceptionnelles, dépenses prévues et bilan — catégories personnalisables, synchronisé et partageable.">
+  <script>
+  (function(){try{
+    var p=JSON.parse(localStorage.getItem('budget.prefs.last')||'{}');
+    var d=p.mode==='dark'||((!p.mode||p.mode==='auto')&&matchMedia('(prefers-color-scheme: dark)').matches);
+    var r=document.documentElement;
+    r.dataset.theme=p.theme||'chaleureux'; r.dataset.mode=d?'dark':'light';
+    r.dataset.density=p.density||'normal'; r.dataset.contrast=p.contrast?'high':'normal';
+    r.style.setProperty('--r',(p.radius==null?12:p.radius)+'px');
+    r.style.setProperty('--ts',String({s:0.94,m:1,l:1.08}[p.text||'m']));
+    if(p.accent!=null){var l=d?64:38;r.style.setProperty('--accent','hsl('+p.accent+' 62% '+l+'%)');
+      r.style.setProperty('--soft',d?'hsl('+p.accent+' 26% 21%)':'hsl('+p.accent+' 56% 92%)');
+      r.style.setProperty('--c2','hsl('+p.accent+' 62% '+l+'%)');}
+  }catch(e){}})();
+  </script>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Figtree:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 
-    <header>
-        <h1>Mon Budget</h1>
-        <button id="settings-btn"><i class="fa-solid fa-gear"></i></button>
+  <!-- ══════════ CONNEXION ══════════ -->
+  <div id="view-auth">
+    <main class="auth-wrap">
+      <div class="auth-card">
+        <div class="auth-top">
+          <h1>Mon budget mensuel</h1>
+          <button class="ghost" type="button" data-theme-open title="Apparence" aria-label="Changer l'apparence">🎨</button>
+        </div>
+        <p class="note">Connectez-vous pour retrouver votre budget, vos catégories et votre thème sur tous vos appareils.</p>
+        <div class="tabs auth-tabs">
+          <button type="button" data-mode="login" class="on">Connexion</button>
+          <button type="button" data-mode="register">Créer un compte</button>
+        </div>
+        <form id="auth-form" novalidate>
+          <label class="lbl">E-mail
+            <input type="email" id="auth-email" required autocomplete="email" placeholder="vous@exemple.fr">
+          </label>
+          <label class="lbl">Mot de passe
+            <input type="password" id="auth-pass" required minlength="6" autocomplete="current-password" placeholder="6 caractères minimum">
+          </label>
+          <p id="auth-error" class="error" hidden></p>
+          <button type="submit" id="auth-submit">Se connecter</button>
+        </form>
+        <button type="button" id="forgot-btn" class="link-btn">Mot de passe oublié ?</button>
+        <p id="demo-hint" class="note" hidden>⚡ <b>Mode démo</b> : Firebase n'est pas configuré — vos données restent sur cet appareil. Renseignez <code>firebase-config.js</code> pour activer la synchronisation.</p>
+        <p class="note help-link"><a href="./aide.html">❓ Besoin d'aide ? Consultez le guide</a></p>
+      </div>
+    </main>
+  </div>
+
+  <!-- ══════════ APPLICATION ══════════ -->
+  <div id="view-app" hidden>
+    <header class="topbar">
+      <div class="account-switcher">
+        <button id="account-btn" class="account-btn ghost" type="button">
+          <span id="current-account-label">Mon compte</span>
+          <span class="chevron">▾</span>
+        </button>
+        <div id="account-menu" class="account-menu" hidden>
+          <button class="account-option active" data-view="self" type="button">
+            <span class="account-icon">👤</span>
+            <span class="mail">Mon compte</span>
+          </button>
+          <div id="linked-accounts-list"></div>
+
+          <div id="shared-with-block">
+            <div class="menu-separator"></div>
+            <p class="menu-title">Personnes ayant accès</p>
+            <div id="shared-with-list"></div>
+          </div>
+
+          <div class="menu-separator"></div>
+          <button class="account-option invite-option" id="invite-btn" type="button">
+            <span class="account-icon">➕</span>
+            <span class="mail">Inviter quelqu'un</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button class="ghost" type="button" data-cats-open title="Paramètres des catégories" aria-label="Paramètres des catégories">⚙️</button>
+        <button class="ghost" type="button" data-theme-open title="Apparence" aria-label="Changer l'apparence">🎨</button>
+        <a class="ghost" href="./aide.html" title="Aide" aria-label="Aide">?</a>
+        <button id="install-btn" class="ghost" hidden>⤓ Installer</button>
+        <span id="user-chip" class="user-chip"></span>
+        <button id="logout-btn" class="ghost">Sortir</button>
+      </div>
     </header>
 
-    <!-- Modal Paramètres & Installation -->
-    <div id="settings-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <h2>Paramètres</h2>
-            <button id="install-btn" class="hidden">
-                <i class="fa-solid fa-download"></i> Installer l'application
-            </button>
-            <p class="info-text">Utilisez ce bouton pour installer l'app sur votre écran d'accueil.</p>
-            <button id="reset-data" class="danger-btn">Réinitialiser les données</button>
-        </div>
+    <div id="demo-banner" class="banner" hidden>Mode démo : données stockées localement — configurez Firebase pour la synchronisation.</div>
+
+    <div id="verify-banner" class="banner warn" hidden>
+      <span>📧 Vérifiez <b id="verify-email"></b> pour pouvoir partager votre budget.</span>
+      <button id="verify-resend" class="ghost sm" type="button">Renvoyer le lien</button>
+      <button id="verify-done" class="ghost sm" type="button">J'ai vérifié</button>
     </div>
 
-    <nav>
-        <button class="tab-btn active" data-tab="provisions">Provisions</button>
-        <button class="tab-btn" data-tab="reel">Dépenses Réelles</button>
-        <button class="tab-btn" data-tab="global">Revenus & Fixes</button>
-    </nav>
+    <div id="readonly-banner" class="banner link" hidden>
+      <span id="readonly-icon">🔒</span>
+      <span id="readonly-text"></span>
+      <b id="readonly-email"></b>
+    </div>
 
     <main>
-        <!-- ONGLET 1: PROVISIONS (Prévisionnel) -->
-        <section id="provisions" class="tab-content active">
-            <h2>Anticipation du Mois</h2>
-            <div class="input-group">
-                <input type="text" id="prov-name" placeholder="Nom de la provision (ex: Loyer, Courses)">
-                <input type="number" id="prov-amount" placeholder="Montant prévu (€)">
-                <button id="add-prov-btn">Ajouter Provision</button>
-            </div>
-            <ul id="provisions-list" class="list-container">
-                <!-- Liste générée par JS -->
-            </ul>
-            <div class="summary-box">
-                <h3>Total Provisonné: <span id="total-prov">0 €</span></h3>
-            </div>
-        </section>
+      <h1>Mon budget mensuel</h1>
+      <div class="month">
+        <button class="ghost" id="prev" aria-label="Mois précédent">‹</button>
+        <button class="ghost month-label" id="mlabel" title="Revenir au mois en cours">…</button>
+        <button class="ghost" id="next" aria-label="Mois suivant">›</button>
+      </div>
 
-        <!-- ONGLET 2: DÉPENSES RÉELLES (Rapprochement) -->
-        <section id="reel" class="tab-content">
-            <h2>Suivi des Dépenses</h2>
-            <div class="input-group">
-                <select id="expense-category">
-                    <option value="">Sélectionner une provision...</option>
-                    <!-- Options générées dynamiquement depuis les provisions -->
-                    <option value="unplanned">⚠️ Non Prévu</option>
-                </select>
-                <input type="text" id="real-desc" placeholder="Description (ex: Carrefour)">
-                <input type="number" id="real-amount" placeholder="Montant réel (€)">
-                <button id="add-real-btn">Ajouter Dépense</button>
-            </div>
-            
-            <div class="stats-container">
-                <div class="stat-card">
-                    <small>Dépensé</small>
-                    <span id="total-spent">0 €</span>
-                </div>
-                <div class="stat-card warning">
-                    <small>Non Prévu</small>
-                    <span id="total-unplanned">0 €</span>
-                </div>
-            </div>
+      <div class="sum" id="sum"></div>
 
-            <ul id="real-expenses-list" class="list-container">
-                <!-- Liste générée par JS -->
-            </ul>
-        </section>
+      <div class="tabs" role="tablist">
+        <button role="tab" id="t-fixes" aria-selected="true" title="Revenus et frais fixes">Revenus &amp; frais</button>
+        <button role="tab" id="t-extra" aria-selected="false" title="Rentrées exceptionnelles">Exceptionnel</button>
+        <button role="tab" id="t-plans" aria-selected="false" title="Dépenses prévues">Prévu</button>
+        <button role="tab" id="t-year" aria-selected="false" title="Bilan de l'année">Bilan</button>
+      </div>
 
-        <!-- ONGLET 3: REVENUS, FIXES & EXCEPTIONNELS (Fusionné) -->
-        <section id="global" class="tab-content">
-            <h2>Revenus & Charges Fixes</h2>
-            
-            <div class="subsection">
-                <h3>Revenus</h3>
-                <div class="input-group">
-                    <input type="text" id="inc-name" placeholder="Source (ex: Salaire)">
-                    <input type="number" id="inc-amount" placeholder="Montant">
-                    <button id="add-inc-btn">+</button>
-                </div>
-                <ul id="income-list"></ul>
-            </div>
-
-            <div class="subsection">
-                <h3>Frais Fixes & Exceptionnels</h3>
-                <div class="input-group">
-                    <input type="text" id="fix-name" placeholder="Nom (ex: Assurance, Cadeau Noël)">
-                    <input type="number" id="fix-amount" placeholder="Montant">
-                    <label><input type="checkbox" id="is-exceptional"> Exceptionnel ?</label>
-                    <button id="add-fix-btn">+</button>
-                </div>
-                <ul id="fixed-list"></ul>
-            </div>
-
-            <div class="summary-box global-summary">
-                <p>Reste à vivre estimé: <span id="remaining-budget">Calcul...</span></p>
-            </div>
-        </section>
+      <div id="view"></div>
     </main>
+  </div>
 
-    <script src="script.js"></script>
+  <!-- Tiroir de détail / historique -->
+  <div class="drawer-scrim" id="detail-scrim"></div>
+  <aside class="detail-drawer" id="detail-drawer" role="dialog" aria-label="Détail et historique de la ligne" inert>
+    <div class="dd-head">
+      <h2 id="dd-title">Détail</h2>
+      <button class="ghost" type="button" id="dd-close" aria-label="Fermer">✕</button>
+    </div>
+    <div class="dd-body" id="dd-body"></div>
+    <div class="dd-foot" id="dd-foot"></div>
+  </aside>
+
+  <!-- Modal invitation -->
+  <div class="modal-back" id="modal-invite" hidden>
+    <div class="modal">
+      <h2>Inviter quelqu'un</h2>
+      <p class="note">La personne recevra une invitation à sa prochaine connexion et choisira d'accepter ou de refuser.</p>
+      <label class="lbl">E-mail de la personne
+        <input type="email" id="invite-email" placeholder="conjoint@exemple.fr">
+      </label>
+      <label class="lbl">Permissions accordées
+        <select id="invite-permissions">
+          <option value="read">👁️ Lecture seule</option>
+          <option value="write">✏️ Lecture et écriture</option>
+        </select>
+      </label>
+      <p id="invite-error" class="error" hidden></p>
+      <div class="modal-actions">
+        <button class="ghost" id="invite-cancel">Annuler</button>
+        <button id="invite-send">Envoyer l'invitation</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal invitations reçues -->
+  <div class="modal-back" id="modal-pending" hidden>
+    <div class="modal">
+      <h2>Invitations reçues</h2>
+      <p class="note">Quelqu'un souhaite partager son budget avec vous.</p>
+      <div id="pending-list"></div>
+      <div class="modal-actions">
+        <button class="ghost" id="pending-close">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
