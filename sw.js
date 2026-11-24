@@ -1,9 +1,14 @@
-/* Service worker — cache de l’application (fonctionnement hors-ligne) */
-const CACHE = 'budget-v14'; // ⚠️ garder synchronisé avec APP_VERSION ('v14') dans app.js
+/* Service worker — cache de l'application (fonctionnement hors-ligne) */
+const CACHE = 'budget-v15'; // ⚠️ garder synchronisé avec APP_VERSION ('v15') dans app.js
 const SHELL = ['./', './index.html', './aide.html', './styles.css', './theme.js', './cats.js', './app.js', './firebase-config.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      // cache:'reload' contourne le cache HTTP : la nouvelle version précharge toujours des fichiers à jour
+      .then(c => Promise.all(SHELL.map(u => fetch(u, { cache: 'reload' }).then(r => { if (r.ok) return c.put(u, r); }))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
