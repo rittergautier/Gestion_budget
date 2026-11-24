@@ -92,17 +92,18 @@
       <li>Ouvrez <b>⚙️ Catégories</b> et adaptez les familles à votre vie : renommez, recolorez, ajoutez, supprimez.</li>
       <li>Dans <b>Revenus &amp; frais</b>, saisissez ce qui rentre et ce qui sort chaque mois.</li>
       <li>Une prime, un remboursement, une vente ? Ajoutez-les dans <b>Exceptionnel</b>, sur le mois où l'argent arrive.</li>
-      <li>Dans <b>Prévu</b>, ajoutez vos dépenses du mois, puis renseignez le <b>montant réel</b> au fil du mois.</li>
+      <li>Dans <b>Provisions</b>, anticipez vos dépenses du mois. Puis, dans <b>Réel</b>, saisissez vos vraies dépenses en les reliant à une provision (ou « Non prévu »).</li>
     </ol>
     <p>Tout est <b>enregistré automatiquement</b>. Le nom du mois en haut est un bouton : cliquez-le pour <b>revenir au mois en cours</b>. Une suppression peut être <b>annulée</b> pendant 5 secondes.</p>
     <p class="tip">⚡ Si un bandeau « Mode démo » s'affiche, Firebase n'est pas configuré : les données restent uniquement sur cet appareil.</p>
   </section>
 
   <section class="box" id="onglets">
-    <h2>🗂️ Les quatre onglets</h2>
+    <h2>🗂️ Les cinq onglets</h2>
     <p><b>Revenus &amp; frais</b> — les montants récurrents. Recherche, tri, <b>🗂️ Groupé / 📋 Liste</b>, pastilles de catégorie pour filtrer, barre de répartition. <b>✎</b> édite la ligne, <b>×</b> l'arrête, un clic sur le nom ouvre le <b>détail avec l'historique</b>. Le bouton <b>⚙️ Catégories</b> de la section ouvre directement la bonne famille dans les paramètres.</p>
     <p><b>Exceptionnel</b> — les rentrées ponctuelles du mois : un libellé, une catégorie, un montant. Pas de prévu, pas de réel.</p>
-    <p><b>Prévu</b> — les dépenses du mois, avec un montant prévu et un champ <b>Réel</b> : <b class="eco">vert</b> si vous dépensez moins, <b class="neg">rouge</b> si vous dépassez.</p>
+    <p><b>Provisions</b> — vos dépenses anticipées du mois : une ligne par dépense à venir et le montant mis de côté. Aucun réel à saisir ici.</p>
+    <p><b>Réel</b> — vos vraies dépenses. À l'ajout, un menu déroulant relie chaque dépense à une provision (ou « 🚫 Non prévu »). Le bloc Rapprochement compare provisionné et dépensé : <b class="eco">vert</b> = économie, <b class="neg">rouge</b> = dépassement.</p>
     <p><b>Bilan</b> — totaux de la période, répartition des frais fixes et des rentrées exceptionnelles, graphique mois par mois et tableau détaillé.</p>
   </section>
 
@@ -111,7 +112,7 @@
     <p>Le bouton <b>⚙️</b> en haut de l'écran ouvre les <b>Paramètres</b>. Trois familles y sont entièrement personnalisables, et chacune a son propre jeu de couleurs et d'emojis :</p>
     <div class="fam"><h3>🏠 Frais fixes</h3><p>Les sorties qui reviennent chaque mois.</p><div class="catgrid" id="cg-fix"></div></div>
     <div class="fam"><h3>✨ Rentrées exceptionnelles</h3><p>Primes, ventes, remboursements, cadeaux…</p><div class="catgrid" id="cg-ext"></div></div>
-    <div class="fam"><h3>🛒 Dépenses prévues</h3><p>Les dépenses du mois, prévu contre réel.</p><div class="catgrid" id="cg-plan"></div></div>
+    <div class="fam"><h3>🛒 Provisions &amp; dépenses</h3><p>Les dépenses du mois : provisions et rapprochement du réel.</p><div class="catgrid" id="cg-plan"></div></div>
 
     <h3 style="margin-top:18px;font-size:15px">Ce que vous pouvez faire</h3>
     <ul>
