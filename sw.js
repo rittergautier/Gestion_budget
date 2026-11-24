@@ -1,5 +1,5 @@
 /* Service worker — cache de l'application (fonctionnement hors-ligne) */
-const CACHE = 'budget-v20261124175358'; // version générée automatiquement
+const CACHE = 'budget-v20261124175544'; // version générée automatiquement
 const SHELL = ['./', './index.html', './aide.html', './styles.css', './theme.js', './cats.js', './app.js', './firebase-config.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', e => {
