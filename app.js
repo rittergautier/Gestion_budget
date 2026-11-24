@@ -114,6 +114,15 @@ const unplannedAt = k => {
   const provs = data.plans[k] || [];
   return sum(realsAt(k).filter(r => !r.planId || !provs.some(p => p.id === r.planId)), 'amount');
 };
+/* Dépassements : part du réel au-dessus de la provision, calculée provision par provision.
+   Les économies sur une provision ne compensent pas les dépassements d'une autre : tout dépassement réduit le reste à vivre. */
+const overspendAt = k => {
+  const rs = realsAt(k);
+  return (data.plans[k] || []).reduce((t, p) => {
+    const spent = sum(rs.filter(r => r.planId === p.id), 'amount');
+    return t + Math.max(0, spent - (+p.amount || 0));
+  }, 0);
+};
 const listSource = kind => kind === 'income' ? incomeAt(ym) : kind === 'fixed' ? fixedAt(ym) : extraAt(ym);
 const chainOf = (kind, it) => data[kind].filter(x => (x.root || x.id) === (it.root || it.id));
 
@@ -619,10 +628,10 @@ function gapHtml() { const r = gap(); if (!r.n) return '<span class="muted">Aucu
 /* ---------- résumé ---------- */
 function renderSum() {
   const inc = incAt(ym), fix = fixAt(ym), pl = sum(plans(), 'amount'), ext = extAt(ym);
-  const np = unplannedAt(ym);
-  const rest = inc - fix - pl - np;
-  const base = Math.max(inc, fix + pl + np, 1);
-  const segs = [[fix, 'var(--c1)'], [pl, 'var(--c2)'], [np, 'var(--neg)'], [Math.max(rest, 0), 'var(--c3)']];
+  const np = unplannedAt(ym), ov = overspendAt(ym);
+  const rest = inc - fix - pl - np - ov;
+  const base = Math.max(inc, fix + pl + np + ov, 1);
+  const segs = [[fix, 'var(--c1)'], [pl, 'var(--c2)'], [np + ov, 'var(--neg)'], [Math.max(rest, 0), 'var(--c3)']];
   let off = 0, arcs = '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="var(--soft)" stroke-width="6"/>';
   segs.forEach(s => { const p = s[0] / base * 100; if (p > 0) { arcs += '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="' + s[1] + '" stroke-width="6" stroke-dasharray="' + p + ' ' + (100 - p) + '" stroke-dashoffset="' + (25 - off) + '"/>'; off += p; } });
   const gp = gap(), gpct = Math.abs(gp.g) / base * 100, gs = (fix + pl) / base * 100;
@@ -633,7 +642,7 @@ function renderSum() {
     arcs += '<circle cx="21" cy="21" r="20" fill="none" stroke="' + (gp.g > 0 ? 'var(--neg)' : 'var(--eco)') + '" stroke-width="1.6" pathLength="100" stroke-dasharray="' + gl + ' ' + (100 - gl) + '" stroke-dashoffset="' + (25 - gst) + '"/>';
   }
   $('#sum').innerHTML =
-    '<div class="pie"><div class="donut"><svg viewBox="0 0 42 42" role="img" aria-label="Répartition des revenus : frais fixes, provisions, non prévu et reste">' + arcs + '</svg>' +
+    '<div class="pie"><div class="donut"><svg viewBox="0 0 42 42" role="img" aria-label="Répartition des revenus : frais fixes, provisions, non prévu, dépassements et reste">' + arcs + '</svg>' +
     '<div class="mid"><span>' + (rest < 0 ? 'Déficit' : 'Reste à vivre') + '</span><b class="' + (rest < 0 ? 'neg' : 'pos') + '">' + fc0.format(rest) + '</b>' +
     (ext > 0 ? '<span class="gold">+' + fc0.format(ext) + ' exceptionnel</span>' : '') +
     (gp.n ? '<span class="' + (gp.g > 0 ? 'neg' : 'eco') + '">' + (gp.g > 0 ? '+' : '') + fc0.format(gp.g) + ' d’écart</span>' : '') + '</div></div>' +
@@ -643,6 +652,7 @@ function renderSum() {
     '<div><i style="background:var(--c1)"></i><span>Frais fixes</span><b>' + f(fix) + '</b></div>' +
     '<div><i style="background:var(--c2)"></i><span>Provisions</span><b>' + f(pl) + '</b></div>' +
     (np > 0 ? '<div><i style="background:var(--neg)"></i><span>Non prévu</span><b>-' + f(np) + '</b></div>' : '') +
+    (ov > 0 ? '<div><i style="background:var(--neg)"></i><span>Dépassements</span><b>-' + f(ov) + '</b></div>' : '') +
     '<div><i style="background:var(--c3)"></i><span>Reste</span><b>' + f(rest) + '</b></div>' +
     (gp.n ? '<div><i style="background:transparent;border:2px solid ' + (gp.g > 0 ? 'var(--neg)' : 'var(--eco)') + '"></i><span>Anneau ext. : écart</span><b>' + (gp.g > 0 ? '+' : '') + f(gp.g) + '</b></div>' : '') +
     '</div></div>' +
@@ -860,12 +870,12 @@ function renderReals() {
       '<select name="cat">' + cats.map(c => '<option value="' + esc(c.id) + '">' + esc(c.e) + ' ' + esc(c.label) + '</option>').join('') + '</select>' +
       '<select name="plan" class="prov-select" aria-label="Provision liée">' + provOptions('') + '</select>' +
       '<button type="submit">Ajouter</button></form>';
-    h += '<p class="note fx-foot">Le menu déroulant liste les provisions de <b>' + esc(mname()) + '</b>. Une dépense « Non prévu » diminue votre <b>reste à vivre</b> et compte comme dépassement dans le bilan.</p>';
+    h += '<p class="note fx-foot">Le menu déroulant liste les provisions de <b>' + esc(mname()) + '</b>. Une dépense « Non prévu » ou un <b>dépassement</b> de provision diminue votre <b>reste à vivre</b> et compte comme dépassement dans le bilan.</p>';
   }
   h += '</section>';
 
   h += '<section class="box"><h2>Rapprochement</h2>' +
-    '<p class="note">Pour chaque provision : montant mis de côté, montant réellement dépensé et écart. <b class="eco">Vert</b> = économie, <b class="neg">rouge</b> = dépassement.</p>';
+    '<p class="note">Pour chaque provision : montant mis de côté, montant réellement dépensé et écart. <b class="eco">Vert</b> = économie, <b class="neg">rouge</b> = dépassement. Les dépassements et le non-prévu réduisent le <b>reste à vivre</b> ; les économies restent dans leurs provisions.</p>';
   if (!provs.length && !rs.length) h += '<p class="empty">Ajoutez des provisions dans l’onglet Provisions, puis vos dépenses ici.</p>';
   provs.forEach(p => {
     const c = catFor('plans', p);
@@ -896,8 +906,8 @@ function mdata(y, m) {
   const k = mkey(y, m);
   const pv = data.plans[k] || [], rs = data.reals[k] || [];
   const d = { k, inc: incAt(k), fix: fixAt(k), ext: extAt(k), pl: sum(pv, 'amount'), n: rs.length, real: sum(rs, 'amount') };
-  d.np = unplannedAt(k);   d.gap = d.n ? d.real - d.pl : 0; 
-  d.rest = d.inc - d.fix - d.pl - d.np;
+  d.np = unplannedAt(k); d.ov = overspendAt(k);   d.gap = d.n ? d.real - d.pl : 0; 
+  d.rest = d.inc - d.fix - d.pl - d.np - d.ov;
   return d;
 }
 function gcls(g) { return g > 0 ? 'neg' : (g < 0 ? 'eco' : 'pos'); }
@@ -931,9 +941,9 @@ function renderYear() {
   const ms = [];
   for (let i = pFrom; i <= pTo; i++) ms.push({ m: i, d: mdata(yr, i) });
   const N = ms.length;
-  let tInc = 0, tFix = 0, tPl = 0, tGap = 0, tN = 0, tReal = 0, tExt = 0, tNp = 0;
-  ms.forEach(x => { tInc += x.d.inc; tFix += x.d.fix; tPl += x.d.pl; tGap += x.d.gap; tN += x.d.n; tReal += x.d.real; tExt += x.d.ext; tNp += x.d.np; });
-  const tRest = tInc - tFix - tPl - tNp;
+  let tInc = 0, tFix = 0, tPl = 0, tGap = 0, tN = 0, tReal = 0, tExt = 0, tNp = 0, tOv = 0;
+  ms.forEach(x => { tInc += x.d.inc; tFix += x.d.fix; tPl += x.d.pl; tGap += x.d.gap; tN += x.d.n; tReal += x.d.real; tExt += x.d.ext; tNp += x.d.np; tOv += x.d.ov; });
+  const tRest = tInc - tFix - tPl - tNp - tOv;
   const presets = [['Année', 1, 12], ['T1', 1, 3], ['T2', 4, 6], ['T3', 7, 9], ['T4', 10, 12], ['S1', 1, 6], ['S2', 7, 12]];
   const opts = sel => MN.map((n, k) => '<option value="' + (k + 1) + '"' + (sel === k + 1 ? ' selected' : '') + '>' + n + '</option>').join('');
   const full = pFrom === 1 && pTo === 12;
@@ -944,6 +954,7 @@ function renderYear() {
     card('Revenus', f(tInc)) + card('Frais fixes', f(tFix)) + card('Provisions', f(tPl)) +
     (tExt > 0 ? card('Dont exceptionnel', f(tExt), 'gold') : '') +
     (tNp > 0 ? card('Non prévu', '-' + f(tNp), 'neg') : '') +
+    (tOv > 0 ? card('Dépassements', '-' + f(tOv), 'neg') : '') +
     card('Reste à vivre', f(tRest), tRest < 0 ? 'neg' : 'pos') + '</div>' +
     '<div class="gap"><span>Écart réel / provisions</span>' + (tN ? '<span><b class="' + gcls(tGap) + '">' + sg(tGap) + '</b> <span class="muted">' + (tGap > 0 ? 'dépassement' : (tGap < 0 ? 'économie' : 'pile dans le budget')) + '</span></span>' : '<span class="muted">Aucune dépense réelle saisie</span>') + '</div></section>';
   h += periodSplit('fixed', ms);
@@ -1353,8 +1364,8 @@ function buildPrintReport() {
   const pv = data.plans[k] || [], rs = data.reals[k] || [];
   const tInc = sum(inc, 'amount'), tExt = sum(ext, 'amount'), tFix = sum(fix, 'amount');
   const tPv = sum(pv, 'amount'), tRs = sum(rs, 'amount');
-  const np = unplannedAt(k);
-  const rest = tInc + tExt - tFix - tPv - np;
+  const np = unplannedAt(k), ov = overspendAt(k);
+  const rest = tInc + tExt - tFix - tPv - np - ov;
   const hasReal = rs.length > 0;
   const ecart = hasReal ? tRs - tPv : null;
   const catLabel = (kind, it) => { const c = catFor(kind, it); return esc(c.e) + ' ' + esc(c.label); };
@@ -1374,7 +1385,7 @@ function buildPrintReport() {
     '<div class="pr-card"><span>Revenus</span><b>' + f(tInc + tExt) + '</b>' + (tExt > 0 ? '<small>dont ' + f(tExt) + ' exceptionnel</small>' : '') + '</div>' +
     '<div class="pr-card"><span>Frais fixes</span><b>' + f(tFix) + '</b></div>' +
     '<div class="pr-card"><span>Provisions</span><b>' + f(tPv) + '</b></div>' +
-    '<div class="pr-card"><span>Reste à vivre</span><b class="' + (rest < 0 ? 'pr-neg' : 'pr-pos') + '">' + f(rest) + '</b>' + (np > 0 ? '<small>après ' + f(np) + ' de dépenses non prévues</small>' : '') + '</div>' +    '<div class="pr-card"><span>Dépenses réelles</span><b>' + (hasReal ? f(tRs) : '—') + '</b></div>' +
+    '<div class="pr-card"><span>Reste à vivre</span><b class="' + (rest < 0 ? 'pr-neg' : 'pr-pos') + '">' + f(rest) + '</b>' + ((np + ov) > 0 ? '<small>après ' + f(np + ov) + ' de non-prévu et dépassements</small>' : '') + '</div>' +    '<div class="pr-card"><span>Dépenses réelles</span><b>' + (hasReal ? f(tRs) : '—') + '</b></div>' +
     '<div class="pr-card"><span>Écart réel / provisions</span><b class="' + ecartCls + '">' + ecartTxt + '</b></div>' +
     '</div>';
 
