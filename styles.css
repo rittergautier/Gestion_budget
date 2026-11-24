@@ -555,28 +555,62 @@ table.wide{min-width:660px}
 /* ══════════ Rapport PDF (impression) ══════════ */
 #print-report{display:none}
 @media print{
-  @page{margin:12mm}
-  body{background:#fff!important;color:#111!important}
+  @page{size:A4;margin:13mm 12mm}
+  body{background:#fff!important;color:#16181d!important}
   body>*{display:none!important}
-  #print-report{display:block!important;font:12px/1.45 Figtree,system-ui,sans-serif;color:#111}
-  #print-report .pr-head h1{font-size:20px;margin:0 0 2px;font-family:"Bricolage Grotesque",Figtree,sans-serif}
-  #print-report .pr-sub{color:#666;font-size:11px;margin:0 0 12px}
-  #print-report .pr-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
-  #print-report .pr-card{border:1px solid #ddd;border-radius:8px;padding:8px 10px}
-  #print-report .pr-card span{display:block;color:#666;font-size:10.5px}
-  #print-report .pr-card b{font-size:15px}
-  #print-report .pr-card small{display:block;color:#888;font-size:10px}
+  #print-report{display:block!important;font:12px/1.5 Figtree,system-ui,sans-serif;color:#16181d}
+  #print-report *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box}
+  #print-report .pr-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:0 0 10px}
+  #print-report .pr-head h1{font-size:21px;margin:0 0 2px;font-family:"Bricolage Grotesque",Figtree,sans-serif}
+  #print-report .pr-sub{color:#6b7280;font-size:11px;margin:0}
+  #print-report .pr-brand{color:#6b7280;font-size:11px;text-align:right;white-space:nowrap}
+  #print-report .pr-hero{display:flex;gap:10px;margin:0 0 10px}
+  #print-report .pr-hero-main{flex:0 0 36%;border:1.5px solid #2e7d32;border-radius:10px;padding:10px 12px}
+  #print-report .pr-hero-main.neg{border-color:#b3261e}
+  #print-report .pr-hero-main span{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6b7280}
+  #print-report .pr-hero-main b{display:block;font-size:27px;line-height:1.15;font-family:"Bricolage Grotesque",Figtree,sans-serif;color:#2e7d32;font-variant-numeric:tabular-nums}
+  #print-report .pr-hero-main.neg b{color:#b3261e}
+  #print-report .pr-hero-main small{display:block;color:#6b7280;font-size:10px;margin-top:2px}
+  #print-report .pr-kpis{flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  #print-report .pr-kpi{border:1px solid #ddd;border-radius:8px;padding:7px 10px}
+  #print-report .pr-kpi span{display:block;color:#6b7280;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}
+  #print-report .pr-kpi b{font-size:15px;font-variant-numeric:tabular-nums}
+  #print-report .pr-kpi small{display:block;color:#6b7280;font-size:10px}
+  #print-report .pr-kpi small.pr-neg{color:#b3261e}
+  #print-report .pr-kpi small.pr-eco{color:#2e7d32}
+  #print-report .pr-alloc{margin:0 0 10px}
+  #print-report .pr-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;border:1px solid #d8dbe0;background:#f4f5f7}
+  #print-report .pr-bar i{display:block;height:100%}
+  #print-report .pr-legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:5px}
+  #print-report .pr-legend span{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:#333}
+  #print-report .pr-legend i{width:9px;height:9px;border-radius:3px;display:inline-block}
+  #print-report .pr-watch{border-radius:8px;padding:8px 11px;margin:0 0 12px;border-left:3px solid #3f6fb5;background:#f3f6fb}
+  #print-report .pr-watch>b{display:block;font-size:12px;margin:0 0 2px}
+  #print-report .pr-watch p{margin:0;font-size:11px;color:#333}
+  #print-report .pr-watch ul{margin:3px 0 0;padding-left:16px}
+  #print-report .pr-watch li{font-size:11px;margin:2px 0}
+  #print-report .pr-watch.warn{border-left-color:#b3261e;background:#fdf1f0}
+  #print-report .pr-watch.ok{border-left-color:#2e7d32;background:#f0f7f1}
+  #print-report .pr-page{break-before:page}
   #print-report .pr-sec{margin:0 0 14px}
-  #print-report .pr-sec h2{font-size:14px;margin:0 0 6px;border-bottom:2px solid #eee;padding-bottom:3px;break-after:avoid-page}
+  #print-report .pr-sec h2{font-size:14px;margin:0 0 5px;border-bottom:2px solid #eee;padding-bottom:3px;break-after:avoid-page;font-family:"Bricolage Grotesque",Figtree,sans-serif}
+  #print-report .pr-note{color:#6b7280;font-size:10.5px;margin:0 0 6px}
   #print-report .pr-table{width:100%;border-collapse:collapse;font-size:11.5px}
-  #print-report .pr-table th,#print-report .pr-table td{padding:4px 6px;border-bottom:1px solid #e5e5e5;text-align:left;vertical-align:top}
-  #print-report .pr-table th{color:#666;font-weight:600;font-size:10.5px}
+  #print-report .pr-table th,#print-report .pr-table td{padding:4px 6px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top}
+  #print-report .pr-table th{color:#6b7280;font-weight:600;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}
   #print-report .pr-table .pr-num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-  #print-report .pr-table tfoot td{font-weight:700;border-top:2px solid #ccc;border-bottom:0}
+  #print-report .pr-table td small{display:block;color:#6b7280;font-weight:400;font-size:9.5px}
   #print-report .pr-table tr{break-inside:avoid}
+  #print-report .pr-group td{background:#f4f5f7;font-weight:600;border-top:1px solid #d8dbe0}
+  #print-report .pr-sub td{color:#444;font-size:10.5px}
+  #print-report .pr-subname{padding-left:16px!important}
+  #print-report .pr-table tfoot td{font-weight:700;border-top:2px solid #c9ccd2;border-bottom:0}
   #print-report .pr-empty{color:#999;font-style:italic}
+  #print-report .pr-muted{color:#999}
   #print-report .pr-neg{color:#b3261e}
   #print-report .pr-eco{color:#2e7d32}
-  #print-report .pr-pos{color:#111}
-  #print-report *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #print-report .pr-pos{color:#16181d}
+  #print-report .pr-duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  #print-report .pr-block{break-inside:avoid}
+  #print-report .pr-foot{margin-top:14px;padding-top:8px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:9.5px}
 }
