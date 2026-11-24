@@ -1772,18 +1772,20 @@ function showUpdatePopup() {
   document.getElementById('update-later').addEventListener('click', () => { updateDismissed = true; back.remove(); });
   document.getElementById('update-reload').addEventListener('click', async () => {
     const btn = document.getElementById('update-reload');
-    btn.disabled = true; btn.textContent = 'Rechargement…';
+    const later = document.getElementById('update-later');
+    btn.disabled = true; later.disabled = true;
+    btn.textContent = 'Mise à jour…';
     try {
       const reg = swReg || await navigator.serviceWorker.getRegistration();
       if (reg) {
         await reg.update().catch(() => {});
         if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        const worker = reg.waiting || reg.installing;
-        if (worker) {
-          await new Promise(res => {
-            const t = setTimeout(res, 2500);
-            navigator.serviceWorker.addEventListener('controllerchange', () => { clearTimeout(t); res(); }, { once: true });
-          });
+        // On attend que le nouveau SW (cache reconstruit depuis le réseau) contrôle la page
+        const ready = await waitForNewController(10000);
+        if (!ready) {
+          // Repli : le contrôleur actuel réécrit son cache avec les fichiers à jour
+          btn.textContent = 'Rafraîchissement du cache…';
+          await refreshControllerCache(8000);
         }
       }
     } catch (e) {}
@@ -1805,6 +1807,40 @@ function swCacheVersion() {
     const timer = setTimeout(() => res(null), 1500);
     ch.port1.onmessage = ev => { clearTimeout(timer); res(ev.data); };
     c.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
+  });
+}
+
+function refreshControllerCache(timeoutMs = 8000) {
+  return new Promise(res => {
+    const c = navigator.serviceWorker.controller;
+    if (!c) return res(false);
+    const ch = new MessageChannel();
+    const timer = setTimeout(() => res(false), timeoutMs);
+    ch.port1.onmessage = ev => { clearTimeout(timer); res(ev.data === 'REFRESHED'); };
+    c.postMessage({ type: 'REFRESH_CACHE' }, [ch.port2]);
+  });
+}
+
+function waitForNewController(timeoutMs = 10000) {
+  return new Promise(res => {
+    const t0 = Date.now();
+    let settled = false;
+    const finish = ok => {
+      if (settled) return;
+      settled = true;
+      navigator.serviceWorker.removeEventListener('controllerchange', onChange);
+      clearInterval(iv);
+      res(ok);
+    };
+    const check = async () => {
+      const v = await swCacheVersion();
+      if (v && newerThanPage(v)) return finish(true);
+      if (Date.now() - t0 > timeoutMs) finish(false);
+    };
+    const onChange = () => check();
+    navigator.serviceWorker.addEventListener('controllerchange', onChange);
+    const iv = setInterval(check, 400);
+    check();
   });
 }
 
