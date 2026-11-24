@@ -1734,7 +1734,8 @@ async function loadAndEnter() {
 }
 
 /* ---------- PWA ---------- */
-const APP_VERSION = 'v14'; // ⚠️ garder synchronisé avec CACHE ('budget-v14') dans sw.js
+/* ---------- PWA ---------- */
+const APP_VERSION = 'v16'; // ⚠️ garder synchronisé avec CACHE ('budget-v15') dans sw.js
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('#install-btn').hidden = false; });
 $('#install-btn').addEventListener('click', async () => {
@@ -1743,9 +1744,17 @@ $('#install-btn').addEventListener('click', async () => {
   const { outcome } = await deferredPrompt.userChoice;
   if (outcome === 'accepted') { $('#install-btn').hidden = true; deferredPrompt = null; }
 });
-/* Vérification de version : si le cache du service worker ne correspond pas à la version
-   de cette page, une pop-up propose de recharger pour se synchroniser. */
+
+/* ----- Détection de mise à jour + pop-up de rechargement -----
+   Deux détections complémentaires :
+   1) le service worker actif répond à GET_VERSION avec son nom de cache ;
+   2) une sonde réseau lit sw.js (cache:'no-cache') pour connaître la dernière
+      version déployée même si le navigateur n'a pas encore mis à jour le SW
+      (le cache HTTP de GitHub Pages retarde sinon la détection jusqu'à 10 min). */
+const SW_SUPPORTED = 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost');
 let updateDismissed = false;
+let swReg = null;
+
 function showUpdatePopup() {
   if (updateDismissed || document.getElementById('modal-update')) return;
   const back = document.createElement('div');
@@ -1760,9 +1769,34 @@ function showUpdatePopup() {
     '<button type="button" id="update-reload">Recharger</button>' +
     '</div></div>';
   document.body.appendChild(back);
-  document.getElementById('update-reload').addEventListener('click', () => location.reload());
   document.getElementById('update-later').addEventListener('click', () => { updateDismissed = true; back.remove(); });
+  document.getElementById('update-reload').addEventListener('click', async () => {
+    const btn = document.getElementById('update-reload');
+    btn.disabled = true; btn.textContent = 'Rechargement…';
+    try {
+      const reg = swReg || await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.update().catch(() => {});
+        if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        const worker = reg.waiting || reg.installing;
+        if (worker) {
+          await new Promise(res => {
+            const t = setTimeout(res, 2500);
+            navigator.serviceWorker.addEventListener('controllerchange', () => { clearTimeout(t); res(); }, { once: true });
+          });
+        }
+      }
+    } catch (e) {}
+    location.reload();
+  });
 }
+
+function newerThanPage(v) {
+  const n = parseInt(String(v).split('-v')[1], 10);
+  const p = parseInt(APP_VERSION.slice(1), 10);
+  return !isNaN(n) && !isNaN(p) && n > p;
+}
+
 function swCacheVersion() {
   return new Promise(res => {
     const c = navigator.serviceWorker.controller;
@@ -1773,30 +1807,48 @@ function swCacheVersion() {
     c.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
   });
 }
+
 async function checkAppVersion() {
   const v = await swCacheVersion();
-  if (!v || v === 'budget-' + APP_VERSION) return;
-  const cacheN = parseInt(String(v).split('-v')[1], 10);
-  const pageN = parseInt(APP_VERSION.slice(1), 10);
-  if (isNaN(cacheN) || isNaN(pageN) || cacheN > pageN) showUpdatePopup();
-}
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-  window.addEventListener('load', async () => {
-    try {
-      const reg = await navigator.serviceWorker.register('./sw.js');
-      checkAppVersion();
-      reg.addEventListener('updatefound', () => {
-        const nw = reg.installing;
-        if (nw) nw.addEventListener('statechange', () => { if (nw.state === 'activated') checkAppVersion(); });
-      });
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') { reg.update().catch(() => {}); checkAppVersion(); }
-      });
-    } catch (e) {}
-  });
-  navigator.serviceWorker.addEventListener('controllerchange', checkAppVersion);
+  if (v && newerThanPage(v)) showUpdatePopup();
 }
 
+async function probeLatestVersion() {
+  try {
+    const r = await fetch('./sw.js', { cache: 'no-cache' });
+    if (!r.ok) return;
+    const m = (await r.text()).match(/budget-v(\d+)/);
+    if (m && parseInt(m[1], 10) > parseInt(APP_VERSION.slice(1), 10)) {
+      showUpdatePopup();
+      if (swReg) swReg.update().catch(() => {});
+    }
+  } catch (e) {}
+}
+
+if (SW_SUPPORTED) {
+  navigator.serviceWorker.addEventListener('controllerchange', checkAppVersion);
+  // Pas d'attente de « load » : le module peut s'évaluer après cet événement
+  // (imports Firebase en top-level await), ce qui le raterait définitivement.
+  (async () => {
+    try {
+      swReg = await navigator.serviceWorker.register('./sw.js');
+      checkAppVersion();
+      probeLatestVersion();
+      swReg.addEventListener('updatefound', () => {
+        const nw = swReg.installing;
+        if (nw) nw.addEventListener('statechange', () => { if (nw.state === 'activated') checkAppVersion(); });
+      });
+    } catch (e) {}
+  })();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      if (swReg) swReg.update().catch(() => {});
+      checkAppVersion();
+      probeLatestVersion();
+    }
+  });
+  setInterval(() => { if (document.visibilityState === 'visible') probeLatestVersion(); }, 60000);
+}
 /* ---------- toast ---------- */
 let toastTimer;
 function toast(msg) {
