@@ -1,5 +1,5 @@
 /* Service worker — cache de l'application (fonctionnement hors-ligne) */
-const CACHE = 'budget-v15'; // ⚠️ garder synchronisé avec APP_VERSION ('v15') dans app.js
+const CACHE = 'budget-v16'; // ⚠️ garder synchronisé avec APP_VERSION ('v16') dans app.js
 const SHELL = ['./', './index.html', './aide.html', './styles.css', './theme.js', './cats.js', './app.js', './firebase-config.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', e => {
