@@ -116,17 +116,17 @@
 
     <main>
       <h1>Mon budget mensuel</h1>
-      <div class="month">
-        <button class="ghost" id="prev" aria-label="Mois précédent">‹</button>
-        <button class="ghost month-label" id="mlabel" title="Revenir au mois en cours">…</button>
-        <button class="ghost" id="next" aria-label="Mois suivant">›</button>
+            <div class="month month-picker" id="month-bar">
+        <select id="m-sel" aria-label="Mois"></select>
+        <select id="y-sel" aria-label="Année"></select>
+        <button class="ghost" id="m-today" type="button" title="Revenir au mois en cours" aria-label="Revenir au mois en cours">📍</button>
+        <button class="ghost" id="export-pdf" type="button" title="Exporter le mois en PDF">⤓ PDF</button>
       </div>
 
       <div class="sum" id="sum"></div>
 
       <div class="tabs" role="tablist">
-        <button role="tab" id="t-fixes" aria-selected="true" title="Revenus et frais fixes">Revenus &amp; frais</button>
-        <button role="tab" id="t-extra" aria-selected="false" title="Rentrées exceptionnelles">Exceptionnel</button>
+        <button role="tab" id="t-fixes" aria-selected="true" title="Revenus, rentrées exceptionnelles et frais fixes">Revenus &amp; frais</button>
         <button role="tab" id="t-plans" aria-selected="false" title="Provisions du mois">Provisions</button>
         <button role="tab" id="t-reals" aria-selected="false" title="Dépenses réelles et rapprochement">Réel</button>
         <button role="tab" id="t-year" aria-selected="false" title="Bilan de l'année">Bilan</button>
@@ -180,7 +180,11 @@
       </div>
     </div>
   </div>
+  <!-- Rapport imprimable (export PDF) -->
+  <div id="print-report" aria-hidden="true">
+    </div>
 
+  
   <div id="toast" class="toast" hidden></div>
   <script type="module" src="./app.js"></script>
 </body>
