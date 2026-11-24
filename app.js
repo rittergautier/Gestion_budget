@@ -1735,7 +1735,7 @@ async function loadAndEnter() {
 
 /* ---------- PWA ---------- */
 /* ---------- PWA ---------- */
-const APP_VERSION = 'v15'; // ⚠️ garder synchronisé avec CACHE ('budget-v15') dans sw.js
+const APP_VERSION = 'v16'; // ⚠️ garder synchronisé avec CACHE ('budget-v15') dans sw.js
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('#install-btn').hidden = false; });
 $('#install-btn').addEventListener('click', async () => {
