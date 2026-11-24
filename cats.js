@@ -2,7 +2,7 @@
 export const KINDS = [
   { id: 'fix',  name: 'Frais fixes',              short: 'Frais fixes', icon: '🏠', desc: 'Les sorties qui reviennent chaque mois' },
   { id: 'ext',  name: 'Rentrées exceptionnelles', short: 'Primes',      icon: '✨', desc: 'Les rentrées ponctuelles : primes, ventes, remboursements' },
-  { id: 'plan', name: 'Dépenses prévues',         short: 'Prévu',       icon: '🛒', desc: 'Les dépenses du mois, prévu contre réel' },
+  { id: 'plan', name: 'Provisions & dépenses',    short: 'Provisions',  icon: '🛒', desc: 'Les dépenses du mois : provisions et rapprochement du réel' },
 ];
 
 const DEF = {
