@@ -1,5 +1,5 @@
 /* Service worker — cache de l’application (fonctionnement hors-ligne) */
-const CACHE = 'budget-v11';
+const CACHE = 'budget-v13'; // ⚠️ garder synchronisé avec APP_VERSION ('v12') dans app.js
 const SHELL = ['./', './index.html', './aide.html', './styles.css', './theme.js', './cats.js', './app.js', './firebase-config.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', e => {
@@ -10,6 +10,12 @@ self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
     .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
+});
+
+self.addEventListener('message', e => {
+  if (!e.data) return;
+  if (e.data.type === 'GET_VERSION' && e.ports && e.ports[0]) e.ports[0].postMessage(CACHE);
+  if (e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {
