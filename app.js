@@ -1678,6 +1678,7 @@ async function loadAndEnter() {
 }
 
 /* ---------- PWA ---------- */
+const APP_VERSION = 'v12'; // ⚠️ garder synchronisé avec CACHE ('budget-v12') dans sw.js
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('#install-btn').hidden = false; });
 $('#install-btn').addEventListener('click', async () => {
@@ -1686,8 +1687,58 @@ $('#install-btn').addEventListener('click', async () => {
   const { outcome } = await deferredPrompt.userChoice;
   if (outcome === 'accepted') { $('#install-btn').hidden = true; deferredPrompt = null; }
 });
+/* Vérification de version : si le cache du service worker ne correspond pas à la version
+   de cette page, une pop-up propose de recharger pour se synchroniser. */
+let updateDismissed = false;
+function showUpdatePopup() {
+  if (updateDismissed || document.getElementById('modal-update')) return;
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  back.id = 'modal-update';
+  back.innerHTML =
+    '<div class="modal" role="dialog" aria-label="Mise à jour disponible">' +
+    '<h2>🔄 Nouvelle version disponible</h2>' +
+    '<p class="note">Une nouvelle version de l’application a été téléchargée. Rechargez la page pour l’utiliser.</p>' +
+    '<div class="modal-actions">' +
+    '<button class="ghost" type="button" id="update-later">Plus tard</button>' +
+    '<button type="button" id="update-reload">Recharger</button>' +
+    '</div></div>';
+  document.body.appendChild(back);
+  document.getElementById('update-reload').addEventListener('click', () => location.reload());
+  document.getElementById('update-later').addEventListener('click', () => { updateDismissed = true; back.remove(); });
+}
+function swCacheVersion() {
+  return new Promise(res => {
+    const c = navigator.serviceWorker.controller;
+    if (!c) return res(null);
+    const ch = new MessageChannel();
+    const timer = setTimeout(() => res(null), 1500);
+    ch.port1.onmessage = ev => { clearTimeout(timer); res(ev.data); };
+    c.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
+  });
+}
+async function checkAppVersion() {
+  const v = await swCacheVersion();
+  if (!v || v === 'budget-' + APP_VERSION) return;
+  const cacheN = parseInt(String(v).split('-v')[1], 10);
+  const pageN = parseInt(APP_VERSION.slice(1), 10);
+  if (isNaN(cacheN) || isNaN(pageN) || cacheN > pageN) showUpdatePopup();
+}
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('./sw.js');
+      checkAppVersion();
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (nw) nw.addEventListener('statechange', () => { if (nw.state === 'activated') checkAppVersion(); });
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') { reg.update().catch(() => {}); checkAppVersion(); }
+      });
+    } catch (e) {}
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', checkAppVersion);
 }
 
 /* ---------- toast ---------- */
