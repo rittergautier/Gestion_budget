@@ -21,6 +21,19 @@ self.addEventListener('message', e => {
   if (!e.data) return;
   if (e.data.type === 'GET_VERSION' && e.ports && e.ports[0]) e.ports[0].postMessage(CACHE);
   if (e.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (e.data.type === 'REFRESH_CACHE' && e.ports && e.ports[0]) {
+    const port = e.ports[0];
+    e.waitUntil(
+      caches.open(CACHE)
+        .then(c => Promise.all(SHELL.map(u =>
+          fetch(u, { cache: 'reload' })
+            .then(r => { if (r.ok) return c.put(u, r); })
+            .catch(() => {})
+        )))
+        .then(() => port.postMessage('REFRESHED'))
+        .catch(() => port.postMessage('FAILED'))
+    );
+  }
 });
 
 self.addEventListener('fetch', e => {
